@@ -5,10 +5,10 @@ load("@buckal//:wrapper.bzl", "buildscript_run", "rust_binary", "rust_library")
 
 http_archive(
     name = "native-tls-vendor",
-    urls = ["https://static.crates.io/crates/native-tls/native-tls-0.2.14.crate"],
-    sha256 = "87de3442987e9dbec73158d5c715e7ad9072fda936bb03d19d7fa10e00520f0e",
+    urls = ["https://static.crates.io/crates/native-tls/native-tls-0.2.18.crate"],
+    sha256 = "465500e14ea162429d264d44189adc38b199b62b1c21eea9f69e4b73cb03bbf2",
     type = "tar.gz",
-    strip_prefix = "native-tls-0.2.14",
+    strip_prefix = "native-tls-0.2.18",
     out = "vendor",
 )
 
@@ -22,10 +22,11 @@ rust_library(
     srcs = [":native-tls-vendor"],
     crate = "native_tls",
     crate_root = "vendor/src/lib.rs",
-    edition = "2015",
+    edition = "2021",
     env = {
         "OUT_DIR": "$(location :native-tls-build-script-run[out_dir])",
     },
+    features = ["default"],
     rustc_flags = [
         "@$(location :native-tls-build-script-run[rustc_flags])",
         "@$(location :native-tls-manifest[env_flags])",
@@ -33,14 +34,14 @@ rust_library(
     os_deps = {
         "linux": [
             "//third-party/rust/crates/log/0.4.29:log",
-            "//third-party/rust/crates/openssl-probe/0.1.6:openssl-probe",
+            "//third-party/rust/crates/openssl-probe/0.2.1:openssl-probe",
             "//third-party/rust/crates/openssl-sys/0.9.111:openssl-sys",
             "//third-party/rust/crates/openssl/0.10.75:openssl",
         ],
         "macos": [
             "//third-party/rust/crates/libc/0.2.182:libc",
             "//third-party/rust/crates/security-framework-sys/2.16.0:security-framework-sys",
-            "//third-party/rust/crates/security-framework/2.11.1:security-framework",
+            "//third-party/rust/crates/security-framework/3.6.0:security-framework",
             "//third-party/rust/crates/tempfile/3.25.0:tempfile",
         ],
         "windows": ["//third-party/rust/crates/schannel/0.1.28:schannel"],
@@ -53,7 +54,8 @@ rust_binary(
     srcs = [":native-tls-vendor"],
     crate = "build_script_build",
     crate_root = "vendor/build.rs",
-    edition = "2015",
+    edition = "2021",
+    features = ["default"],
     rustc_flags = ["@$(location :native-tls-manifest[env_flags])"],
     visibility = [],
 )
@@ -63,7 +65,8 @@ buildscript_run(
     package_name = "native-tls",
     buildscript_rule = ":native-tls-build-script-build",
     env_srcs = [":native-tls-manifest[env_dict]"],
-    version = "0.2.14",
+    features = ["default"],
+    version = "0.2.18",
     manifest_dir = ":native-tls-vendor",
     visibility = ["PUBLIC"],
 )

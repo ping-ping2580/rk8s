@@ -1,11 +1,10 @@
-use humantime::parse_duration;
 use pgp::composed::{
     ArmorOptions, EncryptionCaps, KeyType as PgpKeyType, SecretKeyParamsBuilder,
     SubkeyParamsBuilder,
 };
 use pgp::crypto::hash::HashAlgorithm;
 use pgp::crypto::sym::SymmetricKeyAlgorithm;
-use pgp::types::{CompressionAlgorithm, KeyDetails};
+use pgp::types::CompressionAlgorithm;
 use rand_chacha::ChaCha20Rng;
 use rand_chacha::rand_core::SeedableRng;
 use tracing::info;
@@ -103,8 +102,7 @@ impl PkiBackendInner {
 
         let key_type_str = payload.key_type.unwrap_or_else(|| "rsa".to_string());
         let key_bits = payload.key_bits.unwrap_or(2048);
-        let ttl_str = payload.ttl.unwrap_or_else(|| "365d".to_string());
-        let ttl = parse_duration(&ttl_str)?;
+        let _ttl_str = payload.ttl.unwrap_or_else(|| "365d".to_string());
 
         // Validate RSA key strength
         if key_type_str == "rsa" && !(2048..=8192).contains(&key_bits) {
@@ -136,7 +134,6 @@ impl PkiBackendInner {
             .can_certify(true)
             .can_sign(true)
             .primary_user_id(user_id)
-            .expiration(Some(ttl))
             .preferred_symmetric_algorithms(smallvec::smallvec![
                 SymmetricKeyAlgorithm::AES256,
                 SymmetricKeyAlgorithm::AES192,
