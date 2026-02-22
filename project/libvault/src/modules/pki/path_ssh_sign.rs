@@ -97,8 +97,11 @@ impl PkiBackendInner {
 
         // Validate key type early
         match key_type_str {
-            "ssh-rsa" | "ecdsa-sha2-nistp256" | "ecdsa-sha2-nistp384"
-            | "ecdsa-sha2-nistp521" | "ssh-ed25519" => {}
+            "ssh-rsa"
+            | "ecdsa-sha2-nistp256"
+            | "ecdsa-sha2-nistp384"
+            | "ecdsa-sha2-nistp521"
+            | "ssh-ed25519" => {}
             _ => return Err(RvError::ErrPkiSshPublicKeyInvalid),
         }
 
