@@ -19,7 +19,7 @@ impl PkiBackend {
         let backend = self.inner.clone();
 
         Path::builder()
-            .pattern(r"ssh/sign/(?P<role>\w[\w-]+\w)")
+            .pattern(r"ssh/sign/(?P<role>\w[\w-]*)")
             .field(
                 "role",
                 Field::builder()

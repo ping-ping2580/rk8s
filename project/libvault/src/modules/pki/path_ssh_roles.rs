@@ -15,7 +15,7 @@ impl PkiBackend {
         let backend_delete = self.inner.clone();
 
         Path::builder()
-            .pattern(r"ssh/roles/(?P<name>\w[\w-]+\w)")
+            .pattern(r"ssh/roles/(?P<name>\w[\w-]*)")
             .field(
                 "name",
                 Field::builder()

@@ -1,13 +1,14 @@
+use humantime::parse_duration;
 use pgp::composed::{
     ArmorOptions, EncryptionCaps, KeyType as PgpKeyType, SecretKeyParamsBuilder,
     SubkeyParamsBuilder,
 };
 use pgp::crypto::hash::HashAlgorithm;
 use pgp::crypto::sym::SymmetricKeyAlgorithm;
-use pgp::types::CompressionAlgorithm;
+use pgp::types::{CompressionAlgorithm, KeyDetails};
 use rand_chacha::ChaCha20Rng;
 use rand_chacha::rand_core::SeedableRng;
-use tracing::info;
+use tracing::{info, warn};
 
 use super::{PkiBackend, PkiBackendInner, types};
 use crate::{
@@ -102,7 +103,12 @@ impl PkiBackendInner {
 
         let key_type_str = payload.key_type.unwrap_or_else(|| "rsa".to_string());
         let key_bits = payload.key_bits.unwrap_or(2048);
-        let _ttl_str = payload.ttl.unwrap_or_else(|| "365d".to_string());
+        let ttl_str = payload.ttl.unwrap_or_else(|| "365d".to_string());
+        // Validate TTL so callers get an error for malformed values.
+        // TODO: pgp crate 0.19 does not expose key expiration on SecretKeyParamsBuilder,
+        // so the TTL is validated but not yet embedded in the PGP self-signature.
+        let _ttl = parse_duration(&ttl_str)?;
+        warn!(ttl = %ttl_str, "PGP key expiration is not yet enforced at the OpenPGP layer");
 
         // Validate RSA key strength
         if key_type_str == "rsa" && !(2048..=8192).contains(&key_bits) {
@@ -120,6 +126,14 @@ impl PkiBackendInner {
             "ed25519" => PgpKeyType::X25519,
             _ => return Err(RvError::ErrPkiKeyTypeInvalid),
         };
+
+        // Validate email: must contain '@' and no angle brackets to prevent user ID injection.
+        if !payload.email.contains('@')
+            || payload.email.contains('<')
+            || payload.email.contains('>')
+        {
+            return Err(RvError::ErrRequestFieldInvalid);
+        }
 
         let user_id = format!("{} <{}>", payload.name, payload.email);
 
@@ -175,6 +189,9 @@ impl PkiBackendInner {
             (armored_public, armored_secret, fingerprint, key_id_hex)
         };
 
+        // SECURITY: armored_secret_key is stored in plaintext within the PgpKeyBundle.
+        // The vault barrier provides encryption-at-rest, but direct storage access (e.g. etcd)
+        // would expose PGP private keys. Application-layer encryption should be considered.
         let bundle = types::PgpKeyBundle {
             key_name: payload.key_name.clone(),
             name: payload.name.clone(),

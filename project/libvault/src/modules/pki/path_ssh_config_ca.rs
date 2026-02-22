@@ -98,6 +98,15 @@ impl PkiBackendInner {
             } else {
                 None
             };
+            // If a public key was also supplied, verify it matches the private key.
+            if let Some(ref supplied_pub) = payload.public_key {
+                let derived_pub = ssh_util::format_openssh_pubkey(&pkey, nid)?;
+                let supplied_trimmed = supplied_pub.trim();
+                let derived_trimmed = derived_pub.trim();
+                if supplied_trimmed != derived_trimmed {
+                    return Err(RvError::ErrPkiSshPublicKeyInvalid);
+                }
+            }
             (pkey, nid)
         } else {
             ssh_util::generate_ssh_keypair(&key_type, key_bits)?
