@@ -116,7 +116,7 @@ impl PkiBackendInner {
             extensions.insert("permit-user-rc".to_string(), String::new());
         }
 
-        let cert_type_str = ssh_util::ssh_cert_type_str(&ca_key, ca_nid)?;
+        let cert_type_str = ssh_util::ssh_cert_type_str(&user_key, user_nid)?;
         let user_pubkey_data = ssh_util::encode_pubkey_for_cert(&user_key, user_nid)?;
 
         let cert_bytes = ssh_util::build_ssh_certificate(
@@ -140,10 +140,8 @@ impl PkiBackendInner {
 
         // Store the certificate
         let serial_hex = format!("{:016x}", serial);
-        let cert_entry = StorageEntry {
-            key: format!("ssh/certs/{serial_hex}"),
-            value: signed_key.clone().into_bytes(),
-        };
+        let cert_entry =
+            StorageEntry::new(format!("ssh/certs/{serial_hex}").as_str(), &signed_key)?;
         req.storage_put(&cert_entry).await?;
 
         info!(

@@ -190,10 +190,10 @@ pub enum RvError {
     ErrPkiPgpKeyNameAlreadyExist,
     #[error("PKI PGP key generation failed.")]
     ErrPkiPgpKeyGenerationFailed,
-    #[error("Credentail is invalid.")]
-    ErrCredentailInvalid,
-    #[error("Credentail is not config.")]
-    ErrCredentailNotConfig,
+    #[error("Credential is invalid.")]
+    ErrCredentialInvalid,
+    #[error("Credential is not config.")]
+    ErrCredentialNotConfig,
     #[error("Storage backend doesn't require a lock.")]
     ErrStorageBackendLockless,
     #[error("Storage backend lock failed.")]
@@ -465,8 +465,8 @@ impl PartialEq for RvError {
             | (RvError::ErrPkiPgpKeyNotFound, RvError::ErrPkiPgpKeyNotFound)
             | (RvError::ErrPkiPgpKeyNameAlreadyExist, RvError::ErrPkiPgpKeyNameAlreadyExist)
             | (RvError::ErrPkiPgpKeyGenerationFailed, RvError::ErrPkiPgpKeyGenerationFailed)
-            | (RvError::ErrCredentailInvalid, RvError::ErrCredentailInvalid)
-            | (RvError::ErrCredentailNotConfig, RvError::ErrCredentailNotConfig)
+            | (RvError::ErrCredentialInvalid, RvError::ErrCredentialInvalid)
+            | (RvError::ErrCredentialNotConfig, RvError::ErrCredentialNotConfig)
             | (RvError::ErrUnknown, RvError::ErrUnknown) => true,
             (RvError::ErrResponse(a), RvError::ErrResponse(b)) => a == b,
             (RvError::ErrResponseStatus(sa, ta), RvError::ErrResponseStatus(sb, tb)) => {

@@ -17,15 +17,12 @@ pub const SSH_CERT_TYPE_USER: u32 = 1;
 pub const SSH_CERT_TYPE_HOST: u32 = 2;
 
 /// Encode a byte slice as an SSH string (u32 length prefix + data).
-pub fn encode_string(data: &[u8]) -> Vec<u8> {
-    let len: u32 = data
-        .len()
-        .try_into()
-        .expect("SSH wire format: data length exceeds u32::MAX");
+pub fn encode_string(data: &[u8]) -> Result<Vec<u8>, RvError> {
+    let len: u32 = data.len().try_into().map_err(|_| RvError::ErrPkiInternal)?;
     let mut buf = Vec::with_capacity(4 + data.len());
     buf.extend_from_slice(&len.to_be_bytes());
     buf.extend_from_slice(data);
-    buf
+    Ok(buf)
 }
 
 pub fn encode_u32(v: u32) -> Vec<u8> {
@@ -37,7 +34,7 @@ pub fn encode_u64(v: u64) -> Vec<u8> {
 }
 
 /// Encode a BigNum as an SSH mpint.
-pub fn encode_mpint(bn: &BigNumRef) -> Vec<u8> {
+pub fn encode_mpint(bn: &BigNumRef) -> Result<Vec<u8>, RvError> {
     let bytes = bn.to_vec();
     if bytes.is_empty() {
         return encode_string(&[]);
@@ -57,9 +54,9 @@ pub fn encode_mpint(bn: &BigNumRef) -> Vec<u8> {
 pub fn encode_rsa_pubkey(pkey: &PKey<Private>) -> Result<Vec<u8>, RvError> {
     let rsa = pkey.rsa()?;
     let mut buf = Vec::new();
-    buf.extend_from_slice(&encode_string(b"ssh-rsa"));
-    buf.extend_from_slice(&encode_mpint(rsa.e()));
-    buf.extend_from_slice(&encode_mpint(rsa.n()));
+    buf.extend_from_slice(&encode_string(b"ssh-rsa")?);
+    buf.extend_from_slice(&encode_mpint(rsa.e())?);
+    buf.extend_from_slice(&encode_mpint(rsa.n())?);
     Ok(buf)
 }
 
@@ -82,9 +79,9 @@ pub fn encode_ec_pubkey(pkey: &PKey<Private>, nid: Nid) -> Result<Vec<u8>, RvErr
     };
 
     let mut buf = Vec::new();
-    buf.extend_from_slice(&encode_string(key_type.as_bytes()));
-    buf.extend_from_slice(&encode_string(curve_id.as_bytes()));
-    buf.extend_from_slice(&encode_string(&point_bytes));
+    buf.extend_from_slice(&encode_string(key_type.as_bytes())?);
+    buf.extend_from_slice(&encode_string(curve_id.as_bytes())?);
+    buf.extend_from_slice(&encode_string(&point_bytes)?);
     Ok(buf)
 }
 
@@ -92,8 +89,8 @@ pub fn encode_ec_pubkey(pkey: &PKey<Private>, nid: Nid) -> Result<Vec<u8>, RvErr
 pub fn encode_ed25519_pubkey(pkey: &PKey<Private>) -> Result<Vec<u8>, RvError> {
     let raw = pkey.raw_public_key()?;
     let mut buf = Vec::new();
-    buf.extend_from_slice(&encode_string(b"ssh-ed25519"));
-    buf.extend_from_slice(&encode_string(&raw));
+    buf.extend_from_slice(&encode_string(b"ssh-ed25519")?);
+    buf.extend_from_slice(&encode_string(&raw)?);
     Ok(buf)
 }
 
@@ -133,8 +130,8 @@ pub fn encode_pubkey_for_cert(pkey: &PKey<Private>, nid: Option<Nid>) -> Result<
         openssl::pkey::Id::RSA => {
             let rsa = pkey.rsa()?;
             let mut buf = Vec::new();
-            buf.extend_from_slice(&encode_mpint(rsa.e()));
-            buf.extend_from_slice(&encode_mpint(rsa.n()));
+            buf.extend_from_slice(&encode_mpint(rsa.e())?);
+            buf.extend_from_slice(&encode_mpint(rsa.n())?);
             Ok(buf)
         }
         openssl::pkey::Id::EC => {
@@ -153,13 +150,13 @@ pub fn encode_pubkey_for_cert(pkey: &PKey<Private>, nid: Option<Nid>) -> Result<
                 _ => return Err(RvError::ErrPkiKeyTypeInvalid),
             };
             let mut buf = Vec::new();
-            buf.extend_from_slice(&encode_string(curve_id.as_bytes()));
-            buf.extend_from_slice(&encode_string(&point_bytes));
+            buf.extend_from_slice(&encode_string(curve_id.as_bytes())?);
+            buf.extend_from_slice(&encode_string(&point_bytes)?);
             Ok(buf)
         }
         openssl::pkey::Id::ED25519 => {
             let raw = pkey.raw_public_key()?;
-            Ok(encode_string(&raw))
+            Ok(encode_string(&raw)?)
         }
         _ => Err(RvError::ErrPkiKeyTypeInvalid),
     }
@@ -185,9 +182,9 @@ pub fn build_ssh_certificate(
 
     let mut cert = Vec::new();
     // cert type string
-    cert.extend_from_slice(&encode_string(cert_type_str.as_bytes()));
+    cert.extend_from_slice(&encode_string(cert_type_str.as_bytes())?);
     // nonce
-    cert.extend_from_slice(&encode_string(&nonce));
+    cert.extend_from_slice(&encode_string(&nonce)?);
     // public key data (without key type prefix)
     cert.extend_from_slice(user_pubkey_data);
     // serial
@@ -195,37 +192,37 @@ pub fn build_ssh_certificate(
     // type
     cert.extend_from_slice(&encode_u32(cert_type));
     // key id
-    cert.extend_from_slice(&encode_string(key_id.as_bytes()));
+    cert.extend_from_slice(&encode_string(key_id.as_bytes())?);
     // valid principals (packed as a single string containing sub-strings)
     let mut principals_buf = Vec::new();
     for p in valid_principals {
-        principals_buf.extend_from_slice(&encode_string(p.as_bytes()));
+        principals_buf.extend_from_slice(&encode_string(p.as_bytes())?);
     }
-    cert.extend_from_slice(&encode_string(&principals_buf));
+    cert.extend_from_slice(&encode_string(&principals_buf)?);
     // valid after / before
     cert.extend_from_slice(&encode_u64(valid_after));
     cert.extend_from_slice(&encode_u64(valid_before));
     // critical options (empty)
-    cert.extend_from_slice(&encode_string(&[]));
+    cert.extend_from_slice(&encode_string(&[])?);
     // extensions
     let mut ext_buf = Vec::new();
     let mut sorted_keys: Vec<&String> = extensions.keys().collect();
     sorted_keys.sort();
     for k in sorted_keys {
         let v = &extensions[k];
-        ext_buf.extend_from_slice(&encode_string(k.as_bytes()));
-        ext_buf.extend_from_slice(&encode_string(v.as_bytes()));
+        ext_buf.extend_from_slice(&encode_string(k.as_bytes())?);
+        ext_buf.extend_from_slice(&encode_string(v.as_bytes())?);
     }
-    cert.extend_from_slice(&encode_string(&ext_buf));
+    cert.extend_from_slice(&encode_string(&ext_buf)?);
     // reserved
-    cert.extend_from_slice(&encode_string(&[]));
+    cert.extend_from_slice(&encode_string(&[])?);
     // signature key (CA public key in wire format)
     let ca_pubkey_wire = encode_ca_pubkey(ca_key, ca_nid)?;
-    cert.extend_from_slice(&encode_string(&ca_pubkey_wire));
+    cert.extend_from_slice(&encode_string(&ca_pubkey_wire)?);
 
     // Sign the certificate
     let signature = sign_ssh_data(ca_key, &cert)?;
-    cert.extend_from_slice(&encode_string(&signature));
+    cert.extend_from_slice(&encode_string(&signature)?);
 
     Ok(cert)
 }
@@ -249,8 +246,8 @@ fn sign_ssh_data(pkey: &PKey<Private>, data: &[u8]) -> Result<Vec<u8>, RvError> 
             signer.update(data)?;
             let sig = signer.sign_to_vec()?;
             let mut buf = Vec::new();
-            buf.extend_from_slice(&encode_string(b"rsa-sha2-512"));
-            buf.extend_from_slice(&encode_string(&sig));
+            buf.extend_from_slice(&encode_string(b"rsa-sha2-512")?);
+            buf.extend_from_slice(&encode_string(&sig)?);
             Ok(buf)
         }
         openssl::pkey::Id::EC => {
@@ -272,16 +269,16 @@ fn sign_ssh_data(pkey: &PKey<Private>, data: &[u8]) -> Result<Vec<u8>, RvError> 
             signer.update(data)?;
             let sig = signer.sign_to_vec()?;
             let mut buf = Vec::new();
-            buf.extend_from_slice(&encode_string(sig_type.as_bytes()));
-            buf.extend_from_slice(&encode_string(&sig));
+            buf.extend_from_slice(&encode_string(sig_type.as_bytes())?);
+            buf.extend_from_slice(&encode_string(&sig)?);
             Ok(buf)
         }
         openssl::pkey::Id::ED25519 => {
             let mut signer = Signer::new_without_digest(pkey)?;
             let sig = signer.sign_oneshot_to_vec(data)?;
             let mut buf = Vec::new();
-            buf.extend_from_slice(&encode_string(b"ssh-ed25519"));
-            buf.extend_from_slice(&encode_string(&sig));
+            buf.extend_from_slice(&encode_string(b"ssh-ed25519")?);
+            buf.extend_from_slice(&encode_string(&sig)?);
             Ok(buf)
         }
         _ => Err(RvError::ErrPkiKeyTypeInvalid),
