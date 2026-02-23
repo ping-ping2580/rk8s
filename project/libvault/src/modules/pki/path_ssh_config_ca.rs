@@ -101,9 +101,20 @@ impl PkiBackendInner {
             // If a public key was also supplied, verify it matches the private key.
             if let Some(ref supplied_pub) = payload.public_key {
                 let derived_pub = ssh_util::format_openssh_pubkey(&pkey, nid)?;
-                let supplied_trimmed = supplied_pub.trim();
-                let derived_trimmed = derived_pub.trim();
-                if supplied_trimmed != derived_trimmed {
+                // Compare only key-type + base64-blob, ignoring the optional comment field.
+                let supplied_key_part = supplied_pub
+                    .trim()
+                    .splitn(3, ' ')
+                    .take(2)
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                let derived_key_part = derived_pub
+                    .trim()
+                    .splitn(3, ' ')
+                    .take(2)
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                if supplied_key_part != derived_key_part {
                     return Err(RvError::ErrPkiSshPublicKeyInvalid);
                 }
             }
