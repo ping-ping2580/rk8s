@@ -7,6 +7,15 @@ use std::time::Duration;
 
 use crate::utils::{deserialize_duration, serialize_duration};
 
+/// Certificate key type discriminator used in unified route handlers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CertKeyType {
+    Tls,
+    Ssh,
+    Pgp,
+}
+
 /// Request body for `POST /v1/pki/config/ca`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigCaRequest {

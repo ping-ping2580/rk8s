@@ -88,7 +88,7 @@ async fn test_tls_ssh_pgp_generation_and_validation() -> Result<()> {
     // ==========================================================
 
     // 1-1. Generate Root CA
-    let mut req = Request::new("pki/root/generate/internal");
+    let mut req = Request::new("pki/root/tls/generate/internal");
     req.operation = Operation::Write;
     req.client_token = root_token.clone();
     req.body = Some(
@@ -117,7 +117,7 @@ async fn test_tls_ssh_pgp_generation_and_validation() -> Result<()> {
     println!("[OK] Root CA generated");
 
     // 1-2. Create PKI role
-    let mut req = Request::new("pki/roles/example-dot-com");
+    let mut req = Request::new("pki/roles/tls/example-dot-com");
     req.operation = Operation::Write;
     req.client_token = root_token.clone();
     req.body = Some(
@@ -136,7 +136,7 @@ async fn test_tls_ssh_pgp_generation_and_validation() -> Result<()> {
     println!("[OK] PKI role 'example-dot-com' created");
 
     // 1-3. Issue TLS server certificate
-    let mut req = Request::new("pki/issue/example-dot-com");
+    let mut req = Request::new("pki/issue/tls/example-dot-com");
     req.operation = Operation::Write;
     req.client_token = root_token.clone();
     req.body = Some(
@@ -179,7 +179,7 @@ async fn test_tls_ssh_pgp_generation_and_validation() -> Result<()> {
     println!("[OK] TLS cert issued (serial: {})", tls_serial);
 
     // 1-4. Storage consistency: fetch cert by serial
-    let mut req = Request::new(&format!("pki/cert/{}", tls_serial));
+    let mut req = Request::new(&format!("pki/cert/tls/{}", tls_serial));
     req.operation = Operation::Read;
     req.client_token = root_token.clone();
     let resp = core
@@ -222,7 +222,7 @@ async fn test_tls_ssh_pgp_generation_and_validation() -> Result<()> {
     // ==========================================================
 
     // 2-1. Configure SSH CA (generates a new RSA key pair for SSH signing)
-    let mut req = Request::new("pki/ssh/config/ca");
+    let mut req = Request::new("pki/config/ca/ssh");
     req.operation = Operation::Write;
     req.client_token = root_token.clone();
     req.body = Some(
@@ -250,7 +250,7 @@ async fn test_tls_ssh_pgp_generation_and_validation() -> Result<()> {
     println!("[OK] SSH CA configured");
 
     // 2-2. Create SSH role
-    let mut req = Request::new("pki/ssh/roles/my-role");
+    let mut req = Request::new("pki/roles/ssh/my-role");
     req.operation = Operation::Write;
     req.client_token = root_token.clone();
     req.body = Some(
@@ -283,7 +283,7 @@ async fn test_tls_ssh_pgp_generation_and_validation() -> Result<()> {
         .context("Failed to export SSH private key")?;
 
     // 2-4. Request Vault to sign the user's public key
-    let mut req = Request::new("pki/ssh/sign/my-role");
+    let mut req = Request::new("pki/sign/ssh/my-role");
     req.operation = Operation::Write;
     req.client_token = root_token.clone();
     req.body = Some(
@@ -322,7 +322,7 @@ async fn test_tls_ssh_pgp_generation_and_validation() -> Result<()> {
     println!("[OK] SSH cert signed (serial: {})", ssh_serial);
 
     // 2-5. Storage consistency: fetch SSH cert by serial
-    let mut req = Request::new(&format!("pki/ssh/cert/{}", ssh_serial));
+    let mut req = Request::new(&format!("pki/cert/ssh/{}", ssh_serial));
     req.operation = Operation::Read;
     req.client_token = root_token.clone();
     let resp = core
@@ -350,7 +350,7 @@ async fn test_tls_ssh_pgp_generation_and_validation() -> Result<()> {
     // ==========================================================
 
     // 3-1. Generate PGP key pair (exported mode to get private key)
-    let mut req = Request::new("pki/pgp/generate/exported");
+    let mut req = Request::new("pki/keys/generate/exported");
     req.operation = Operation::Write;
     req.client_token = root_token.clone();
     req.body = Some(
@@ -358,7 +358,7 @@ async fn test_tls_ssh_pgp_generation_and_validation() -> Result<()> {
             "name": "Test User",
             "email": "test@example.com",
             "key_name": "test-pgp-key",
-            "key_type": "rsa",
+            "key_type": "pgp",
             "key_bits": 2048
         })
         .as_object()
@@ -397,7 +397,7 @@ async fn test_tls_ssh_pgp_generation_and_validation() -> Result<()> {
     // 3-2. Verify PGP key works via sign + verify API roundtrip
     // "hello pgp" in hex
     let test_data = "68656c6c6f20706770";
-    let mut req = Request::new("pki/pgp/sign");
+    let mut req = Request::new("pki/keys/sign");
     req.operation = Operation::Write;
     req.client_token = root_token.clone();
     req.body = Some(
@@ -425,7 +425,7 @@ async fn test_tls_ssh_pgp_generation_and_validation() -> Result<()> {
         .to_string();
     println!("[OK] PGP signature created");
 
-    let mut req = Request::new("pki/pgp/verify");
+    let mut req = Request::new("pki/keys/verify");
     req.operation = Operation::Write;
     req.client_token = root_token.clone();
     req.body = Some(
