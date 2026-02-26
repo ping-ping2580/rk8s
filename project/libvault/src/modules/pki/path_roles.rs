@@ -533,6 +533,10 @@ impl PkiBackendInner {
                     .ok_or(RvError::ErrRequestFieldInvalid)?,
             )
             .await?;
+        let role_entry = match role_entry {
+            Some(r) => r,
+            None => return Err(RvError::ErrPkiRoleNotFound),
+        };
         let data = serde_json::to_value(role_entry)?;
         Ok(Some(Response::data_response(Some(
             data.as_object().unwrap().clone(),
@@ -755,7 +759,8 @@ impl PkiBackendInner {
             return Err(RvError::ErrRequestNoDataField);
         }
 
-        req.storage_delete(format!("roles/tls/{name}").as_str()).await?;
+        req.storage_delete(format!("roles/tls/{name}").as_str())
+            .await?;
         Ok(None)
     }
 
@@ -782,7 +787,10 @@ impl PkiBackendInner {
     ) -> Result<Option<Response>, RvError> {
         let name_value = req.get_data("name")?;
         let name = name_value.as_str().ok_or(RvError::ErrRequestFieldInvalid)?;
-        let role = self.get_ssh_role(req, name).await?;
+        let role = match self.get_ssh_role(req, name).await? {
+            Some(r) => r,
+            None => return Err(RvError::ErrPkiSshRoleNotFound),
+        };
         let data = serde_json::to_value(role)?;
         Ok(Some(Response::data_response(Some(
             data.as_object().unwrap().clone(),

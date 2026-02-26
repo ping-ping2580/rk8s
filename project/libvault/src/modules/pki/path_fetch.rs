@@ -41,7 +41,6 @@ impl PkiBackend {
 
         Path::builder()
             .pattern("crl(/pem)?")
-            .pattern("crl(/pem)?")
             .operation(Operation::Read, {
                 let handler = backend.clone();
                 move |backend, req| {

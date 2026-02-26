@@ -255,7 +255,7 @@ async fn test_tls_ssh_pgp_generation_and_validation() -> Result<()> {
     req.client_token = root_token.clone();
     req.body = Some(
         serde_json::json!({
-            "cert_type": "user",
+            "cert_type_ssh": "user",
             "key_type": "ed25519",
             "ttl": "1h",
             "allowed_users": "ubuntu"

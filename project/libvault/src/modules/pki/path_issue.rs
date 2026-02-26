@@ -162,8 +162,8 @@ impl PkiBackendInner {
         let ct = ct.as_str().ok_or(RvError::ErrRequestFieldInvalid)?;
         match ct {
             "tls" => {
-                // TLS CSR signing - stub for now
-                Err(RvError::ErrRequestFieldInvalid)
+                // TLS CSR signing - not yet implemented
+                Err(RvError::ErrPkiKeyOperationInvalid)
             }
             "ssh" => self.ssh_sign_key(backend, req).await,
             _ => Err(RvError::ErrRequestFieldInvalid),
